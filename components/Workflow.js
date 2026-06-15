@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef } from "react";
+import { useState, useRef, Fragment } from "react";
 import { Icons } from "./Icons";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -118,8 +118,8 @@ export default function DetectionWorkflow({ onSubmit }) {
           { n: 2, t: "Detection", s: "Model inference" },
           { n: 3, t: "Confirm & Submit", s: "Verify + log" },
         ].map((st, i) => (
-          <>
-            <div className="step" key={st.n}>
+          <Fragment key={st.n}>
+            <div className="step">
               <StepDot n={st.n} state={stepState(st.n)} />
               <div>
                 <div className="step-t">{st.t}</div>
@@ -127,9 +127,9 @@ export default function DetectionWorkflow({ onSubmit }) {
               </div>
             </div>
             {i < 2 && (
-              <div key={"line-" + i} className={"step-line " + (stepState(st.n) === "done" ? "done" : "")}></div>
+              <div className={"step-line " + (stepState(st.n) === "done" ? "done" : "")}></div>
             )}
-          </>
+          </Fragment>
         ))}
       </div>
 
