@@ -31,7 +31,13 @@ async def predict(file: UploadFile = File(...)):
     pil_img = Image.open(io.BytesIO(contents)).convert("RGB")
     img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
 
-    results = model.predict(source=img, conf=0.25)
+    # Resize to max 1024px to reduce memory + inference time on free tier
+    h, w = img.shape[:2]
+    if max(h, w) > 1024:
+        scale = 1024 / max(h, w)
+        img = cv2.resize(img, (int(w * scale), int(h * scale)))
+
+    results = model.predict(source=img, conf=0.25, imgsz=640)
     r = results[0]
 
     class_counts = {}
