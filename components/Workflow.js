@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, Fragment } from "react";
+import { useState, useRef, Fragment, useEffect } from "react";
 import { Icons } from "./Icons";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -13,9 +13,13 @@ function StepDot({ n, state }) {
   );
 }
 
-function downloadUrl(href, filename) {
+function saveImage(dataUrl, filename, setPreview) {
+  if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+    setPreview(dataUrl);
+    return;
+  }
   const a = document.createElement("a");
-  a.href = href;
+  a.href = dataUrl;
   a.download = filename;
   document.body.appendChild(a);
   a.click();
@@ -29,18 +33,30 @@ export default function DetectionWorkflow({ onSubmit }) {
   const [actual, setActual] = useState("");
   const [notes, setNotes] = useState("");
   const [originalUrl, setOriginalUrl] = useState(null);
+  const [originalDataUrl, setOriginalDataUrl] = useState(null);
   const [resultUrl, setResultUrl] = useState(null);
   const [apiCount, setApiCount] = useState(0);
   const [apiConfidence, setApiConfidence] = useState(0);
   const [apiCounts, setApiCounts] = useState({});
+  const [apiColors, setApiColors] = useState({});
   const [error, setError] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [warming, setWarming] = useState(true);
   const fileRef = useRef(null);
   const currentFile = useRef(null);
+  const resultBlobRef = useRef(null);
+
+  useEffect(() => {
+    fetch(`${API_URL}/docs`).catch(() => {}).finally(() => setWarming(false));
+  }, []);
 
   const runDetection = async (file) => {
     currentFile.current = file;
     const objUrl = URL.createObjectURL(file);
     setOriginalUrl(objUrl);
+    const reader = new FileReader();
+    reader.onload = e => setOriginalDataUrl(e.target.result);
+    reader.readAsDataURL(file);
     setResultUrl(null);
     setError(null);
     setPhase("detecting");
@@ -52,9 +68,13 @@ export default function DetectionWorkflow({ onSubmit }) {
       const res = await fetch(`${API_URL}/predict`, { method: "POST", body: form });
       if (!res.ok) throw new Error(`Server responded ${res.status}`);
       const data = await res.json();
-      setResultUrl(`data:image/jpeg;base64,${data.image_base64}`);
+      const b64 = data.image_base64;
+      const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+      resultBlobRef.current = new File([bytes], "detection-result.jpg", { type: "image/jpeg" });
+      setResultUrl(`data:image/jpeg;base64,${b64}`);
       setApiCount(data.total);
       setApiCounts(data.counts ?? {});
+      setApiColors(data.colors ?? {});
       setApiConfidence(data.confidence ?? 0);
       setPhase("detected");
     } catch (err) {
@@ -82,12 +102,15 @@ export default function DetectionWorkflow({ onSubmit }) {
     currentFile.current = null;
     setPhase("empty");
     setOriginalUrl(null);
+    setOriginalDataUrl(null);
     setResultUrl(null);
     setError(null);
     setActual("");
     setNotes("");
     setApiCount(0);
     setApiCounts({});
+    setApiColors({});
+    resultBlobRef.current = null;
     setApiConfidence(0);
   };
 
@@ -156,7 +179,9 @@ export default function DetectionWorkflow({ onSubmit }) {
             >
               <div className="dz-ico">{I.camera({ size: 26 })}</div>
               <div className="dz-t">Capture from line camera</div>
-              <div className="dz-s">or drop an image / click to upload</div>
+              <div className="dz-s">
+                {warming ? "Warming up server…" : "or drop an image / click to upload"}
+              </div>
               <div className="dz-actions">
                 <button className="btn btn-primary" onClick={(e) => { e.stopPropagation(); fileRef.current?.click(); }}>
                   {I.camera({ size: 17 })} Capture Now
@@ -188,7 +213,7 @@ export default function DetectionWorkflow({ onSubmit }) {
                 <button
                   className="btn btn-ghost"
                   style={{ flex: 1 }}
-                  onClick={() => downloadUrl(originalUrl, currentFile.current?.name ?? "original.jpg")}
+                  onClick={() => saveImage(originalDataUrl, currentFile.current?.name ?? "original.jpg", setPreviewUrl)}
                 >
                   {I.download({ size: 16 })} Save Original
                 </button>
@@ -225,19 +250,24 @@ export default function DetectionWorkflow({ onSubmit }) {
           )}
 
           {phase === "detecting" && (
-            <div className="media tall detecting" style={{ overflow: "hidden" }}>
-              {originalUrl && (
-                <img
-                  src={originalUrl}
-                  alt=""
-                  style={{ width: "100%", height: "100%", objectFit: "contain", opacity: 0.5 }}
-                />
-              )}
-              <div className="scanline"></div>
-              <div className="media-tag" style={{ background: "oklch(0.55 0.17 256)" }}>
-                {I.cpu({ size: 13 })} INFERRING
+            <>
+              <div className="media tall detecting" style={{ overflow: "hidden" }}>
+                {originalUrl && (
+                  <img
+                    src={originalUrl}
+                    alt=""
+                    style={{ width: "100%", height: "100%", objectFit: "contain", opacity: 0.5 }}
+                  />
+                )}
+                <div className="scanline"></div>
+                <div className="media-tag" style={{ background: "oklch(0.55 0.17 256)" }}>
+                  {I.cpu({ size: 13 })} INFERRING
+                </div>
               </div>
-            </div>
+              <p style={{ fontSize: 12, opacity: 0.5, marginTop: 8, textAlign: "center" }}>
+                {I.refresh({ size: 12, className: "spin" })} Running on server — may take up to 2 min on first use
+              </p>
+            </>
           )}
 
           {phase === "detected" && (
@@ -272,7 +302,7 @@ export default function DetectionWorkflow({ onSubmit }) {
               <button
                 className="btn btn-ghost btn-block"
                 style={{ marginTop: 8 }}
-                onClick={() => downloadUrl(resultUrl, "detection-result.jpg")}
+                onClick={() => saveImage(resultUrl, "detection-result.jpg", setPreviewUrl)}
               >
                 {I.download({ size: 16 })} Save Detection Result
               </button>
@@ -341,6 +371,22 @@ export default function DetectionWorkflow({ onSubmit }) {
           </div>
         </section>
       </div>
+
+      {previewUrl && (
+        <div
+          onClick={() => setPreviewUrl(null)}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.92)", zIndex: 9999, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, padding: 20 }}
+        >
+          <p style={{ color: "#fff", fontSize: 13, opacity: 0.8, textAlign: "center" }}>Long press the image → Save to Photos</p>
+          <img
+            src={previewUrl}
+            alt="Save preview"
+            style={{ maxWidth: "100%", maxHeight: "75vh", objectFit: "contain", borderRadius: 10 }}
+            onClick={e => e.stopPropagation()}
+          />
+          <button onClick={() => setPreviewUrl(null)} style={{ color: "#fff", background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 8, padding: "10px 28px", fontSize: 14 }}>Close</button>
+        </div>
+      )}
     </div>
   );
 }

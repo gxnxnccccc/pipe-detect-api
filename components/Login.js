@@ -9,9 +9,8 @@ export default function LoginScreen({ onLogin }) {
   const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  const submit = (e) => {
-    e.preventDefault();
-    if (!id || !pw) return;
+  const submit = () => {
+    if (!id || busy) return;
     setBusy(true);
     setTimeout(() => onLogin(id), 750);
   };
@@ -57,7 +56,7 @@ export default function LoginScreen({ onLogin }) {
 
       {/* right: form */}
       <div className="login-main">
-        <form className="login-form fade-up" onSubmit={submit}>
+        <div className="login-form fade-up">
           <div className="login-form-head">
             <span className="badge ok"><span className="dot ok"></span> System Online</span>
             <h2>Factory Login</h2>
@@ -98,7 +97,7 @@ export default function LoginScreen({ onLogin }) {
             <a className="link" href="#" onClick={(e) => e.preventDefault()}>Forgot?</a>
           </div>
 
-          <button className="btn btn-primary btn-block btn-lg" type="submit" disabled={busy}>
+          <button className="btn btn-primary btn-block btn-lg" type="button" onClick={submit} disabled={busy}>
             {busy
               ? <>{I.refresh({ size: 18, className: "spin" })} Authenticating…</>
               : <>Log In {I.arrowRight({ size: 18 })}</>
@@ -110,7 +109,7 @@ export default function LoginScreen({ onLogin }) {
             <span>·</span>
             <span>Line A — Bay 3 Terminal</span>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );

@@ -20,10 +20,15 @@ export const metadata = {
   description: "Industrial pipe bundle detection and counting system",
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+};
+
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className={`${manrope.variable} ${jetbrainsMono.variable}`}>
+<body className={`${manrope.variable} ${jetbrainsMono.variable}`}>
         {children}
       </body>
     </html>

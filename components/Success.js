@@ -21,7 +21,7 @@ export default function SuccessScreen({ record, onNew, onDashboard }) {
               <circle className="ring-bg" cx="40" cy="40" r="35" />
               <circle className="ring-fg" cx="40" cy="40" r="35" />
             </svg>
-            <span className="success-check">{I.check({ size: 32, sw: 2.6 })}</span>
+            <span className="success-check"><span style={{ display: "inline-flex", transform: "rotate(90deg)" }}>{I.check({ size: 32, sw: 2.6 })}</span></span>
           </div>
           <h2>Submitted Successfully</h2>
           <p>Detection result for <span className="mono">{record.doNum}</span> has been logged to the database.</p>
